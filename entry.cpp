@@ -1,9 +1,16 @@
-static Entry *CreateEntry(Window *window, Directx *directx, Cube *cube) {
+static Entry *CreateEntry(Window *window, Directx *directx, Camera *camera, Cube *cube) {
   Entry *result = new Entry;
 
   result->window = window;
   result->directx = directx;
+  result->camera = camera;
   result->cube = cube;
+
+  int width = window->width;
+  int height = window->height;
+  float aspect_ratio = width / static_cast<float>(height);
+  result->projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(45), aspect_ratio,
+                                        0.1f, FOV);
 
   return result;
 }
@@ -12,17 +19,20 @@ inline void EntryRender(Entry *entry, float dt) {
   auto directx = entry->directx;
   auto cube = entry->cube;
   auto pipeline_state = cube->pipeline_state;
+  auto camera = entry->camera;
+  auto view = camera->view;
+  auto projection = entry->projection;
 
   DirectxRenderBegin(directx, pipeline_state);
-#ifdef _DEBUG
-  CubeRender(cube, directx);
-#endif
+  CubeRender(cube, directx, view, projection);
   DirectxRenderEnd(directx);
 }
 
 inline void EntryUpdate(Entry *entry, float dt) {
   Cube *cube = entry->cube;
+  Camera *camera = entry->camera;
 
+  CameraUpdate(camera, dt);
   CubeUpdate(cube, dt);
 }
 

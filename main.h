@@ -22,6 +22,7 @@
 #include <directxcolors.h>
 #include <string>
 #include <chrono>
+#include <algorithm>
 
 #ifdef min
 #undef min
@@ -41,9 +42,9 @@ using namespace Microsoft::WRL;
 #include "error.h"
 #include "time.h"
 #include "window.h"
-// #include "descriptor_heap.h"
 #include "directx.h"
 #include "texture.h"
+#include "camera.h"
 
 // Tests
 #include "tests\cube.h"
@@ -59,3 +60,10 @@ using namespace Microsoft::WRL;
 // Shader compilation:
 // PIXEL SHADER: fxc /T ps_5_1 /Fo ps.cso ps.hlsl
 // VERTEX SHADER: fxc /T vs_5_1 /Fo vs.cso vs.hlsl
+
+// 1. Create Box (V)
+// 2. Create Texture (V)
+// 3. Create Camera (V)
+// 4. Create constant buffer for a cube (...)
+// 5. Create descriptor allocator (...)
+// N. Create thousands moving colored cubes like in Sebastian video (...)

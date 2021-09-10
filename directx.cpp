@@ -14,29 +14,28 @@ inline bool IsTearingSupported() {
 }
 
 static bool DirectxMoveToNextFrame(Directx *directx) {
-  auto &fence_values = directx->fence_values;
   auto &current_back_buffer_index = directx->current_back_buffer_index;
-  auto command_queue_direct = directx->command_queue_direct;
+  auto &fence_value = directx->fence_values[current_back_buffer_index];
+  auto command_queue = directx->command_queue;
   auto fence = directx->fence;
   auto fence_event = directx->fence_event;
   auto swap_chain4 = directx->swap_chain4;
 
-  const uint64_t current_fence_value = fence_values[current_back_buffer_index];
-  if (command_queue_direct->Signal(fence.Get(), current_fence_value) != S_OK) {
+  const uint64_t current_fence_value = fence_value;
+  if (command_queue->Signal(fence.Get(), current_fence_value) != S_OK) {
     return false;
   }
 
   current_back_buffer_index = swap_chain4->GetCurrentBackBufferIndex();
 
-  if (fence->GetCompletedValue() < fence_values[current_back_buffer_index]) {
-    if (fence->SetEventOnCompletion(fence_values[current_back_buffer_index],
-                                    fence_event) != S_OK) {
+  if (fence->GetCompletedValue() < fence_value) {
+    if (fence->SetEventOnCompletion(fence_value, fence_event) != S_OK) {
       return false;
     }
     WaitForSingleObjectEx(fence_event, INFINITE, FALSE);
   }
 
-  fence_values[current_back_buffer_index] = current_fence_value + 1;
+  fence_value = current_fence_value + 1;
 
   return true;
 }
@@ -131,9 +130,9 @@ static void DirectxUpdate(Directx *directx) {
 static bool DirectxRenderBegin(
     Directx *directx, ComPtr<ID3D12PipelineState> pipeline_state = nullptr) {
   auto &current_back_buffer_index = directx->current_back_buffer_index;
-  auto command_allocator_direct =
-      directx->command_allocators_direct[current_back_buffer_index];
-  auto command_list_direct = directx->command_list_direct;
+  auto command_allocator =
+      directx->command_allocators[current_back_buffer_index];
+  auto command_list = directx->command_list;
   auto back_buffer = directx->back_buffers[current_back_buffer_index];
   auto rtv_descriptor_heap = directx->rtv_descriptor_heap;
   auto rtv_descriptor_size = directx->rtv_descriptor_size;
@@ -146,38 +145,37 @@ static bool DirectxRenderBegin(
       rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(),
       current_back_buffer_index, rtv_descriptor_size);
 
-  command_allocator_direct->Reset();
-  command_list_direct->Reset(command_allocator_direct.Get(),
-                             pipeline_state.Get());
+  command_allocator->Reset();
+  command_list->Reset(command_allocator.Get(), pipeline_state.Get());
 
   // Clear
   CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
       back_buffer.Get(), D3D12_RESOURCE_STATE_PRESENT,
       D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-  command_list_direct->ResourceBarrier(1, &barrier);
+  command_list->ResourceBarrier(1, &barrier);
 
   FLOAT clear_color[] = {0.4f, 0.6f, 0.9f, 1.0f};
-  command_list_direct->ClearRenderTargetView(rtv_descriptor_handle, clear_color,
-                                             0, nullptr);
-  command_list_direct->ClearDepthStencilView(
+  command_list->ClearRenderTargetView(rtv_descriptor_handle, clear_color, 0,
+                                      nullptr);
+  command_list->ClearDepthStencilView(
       dsv_descriptor_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
   // Populate command list
-  command_list_direct->RSSetViewports(1, &viewport);
-  command_list_direct->RSSetScissorRects(1, &scissor_rect);
+  command_list->RSSetViewports(1, &viewport);
+  command_list->RSSetScissorRects(1, &scissor_rect);
 
-  command_list_direct->OMSetRenderTargets(1, &rtv_descriptor_handle, FALSE,
-                                          &dsv_descriptor_handle);
+  command_list->OMSetRenderTargets(1, &rtv_descriptor_handle, FALSE,
+                                   &dsv_descriptor_handle);
 
   return true;
 }
 
 static bool DirectxRenderEnd(Directx *directx) {
   auto &current_back_buffer_index = directx->current_back_buffer_index;
-  auto command_list_direct = directx->command_list_direct;
+  auto command_list = directx->command_list;
   auto back_buffer = directx->back_buffers[current_back_buffer_index];
-  auto command_queue_direct = directx->command_queue_direct;
+  auto command_queue = directx->command_queue;
   auto swap_chain4 = directx->swap_chain4;
   auto vsync = directx->vsync;
   auto fence = directx->fence;
@@ -189,13 +187,12 @@ static bool DirectxRenderEnd(Directx *directx) {
   CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
       back_buffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
       D3D12_RESOURCE_STATE_PRESENT);
-  command_list_direct->ResourceBarrier(1, &barrier);
+  command_list->ResourceBarrier(1, &barrier);
 
-  command_list_direct->Close();
+  command_list->Close();
 
-  ID3D12CommandList *const command_lists[] = {command_list_direct.Get()};
-  command_queue_direct->ExecuteCommandLists(_countof(command_lists),
-                                            command_lists);
+  ID3D12CommandList *const command_lists[] = {command_list.Get()};
+  command_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 
   UINT sync_interval = 0;  // NO VSync
   UINT present_flags =
@@ -207,14 +204,6 @@ static bool DirectxRenderEnd(Directx *directx) {
   if (!DirectxMoveToNextFrame(directx)) {
     return false;
   }
-
-  // fence_values[current_back_buffer_index] =
-  //     Signal(command_queue_direct, fence, fence_value);
-
-  // current_back_buffer_index = swap_chain4->GetCurrentBackBufferIndex();
-
-  // WaitForFenceValue(fence, fence_values[current_back_buffer_index],
-  //                   fence_event);
 
   return true;
 }
@@ -343,27 +332,15 @@ static Directx *CreateDirectx(Window *window) {
   }
 #endif
 
-  // Create direct command queue
-  ComPtr<ID3D12CommandQueue> command_queue_direct;
+  // Create command queue
+  ComPtr<ID3D12CommandQueue> command_queue;
 
   D3D12_COMMAND_QUEUE_DESC qqd = {};
   qqd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
   qqd.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
   qqd.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 
-  if (device2->CreateCommandQueue(&qqd, IID_PPV_ARGS(&command_queue_direct)) !=
-      S_OK) {
-    return nullptr;
-  }
-
-  // Create copy command queue
-  ComPtr<ID3D12CommandQueue> command_queue_copy;
-  qqd.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-  qqd.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-  qqd.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-
-  if (device2->CreateCommandQueue(&qqd, IID_PPV_ARGS(&command_queue_copy)) !=
-      S_OK) {
+  if (device2->CreateCommandQueue(&qqd, IID_PPV_ARGS(&command_queue)) != S_OK) {
     return nullptr;
   }
 
@@ -388,7 +365,7 @@ static Directx *CreateDirectx(Window *window) {
   DXGI_SWAP_CHAIN_DESC1 scd = {};
   scd.Width = width;
   scd.Height = height;
-  scd.BufferCount = Directx::FRAMES_COUNT;
+  scd.BufferCount = FRAME_COUNT;
   scd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
   scd.Flags = IsTearingSupported() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
   scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -399,9 +376,8 @@ static Directx *CreateDirectx(Window *window) {
   scd.Stereo = FALSE;
 
   ComPtr<IDXGISwapChain1> swap_chain1;
-  if (factory4->CreateSwapChainForHwnd(command_queue_direct.Get(), hwnd, &scd,
-                                       nullptr, nullptr,
-                                       &swap_chain1) != S_OK) {
+  if (factory4->CreateSwapChainForHwnd(command_queue.Get(), hwnd, &scd, nullptr,
+                                       nullptr, &swap_chain1) != S_OK) {
     return nullptr;
   }
 
@@ -419,7 +395,7 @@ static Directx *CreateDirectx(Window *window) {
 
   // Create rtv descriptor heap
   ComPtr<ID3D12DescriptorHeap> rtv_descriptor_heap = CreateDescriptorHeap(
-      device2, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, Directx::FRAMES_COUNT);
+      device2, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, FRAME_COUNT);
   UINT rtv_descriptor_size =
       device2->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
@@ -427,7 +403,7 @@ static Directx *CreateDirectx(Window *window) {
   CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(
       rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
 
-  for (int i = 0; i < Directx::FRAMES_COUNT; ++i) {
+  for (int i = 0; i < FRAME_COUNT; ++i) {
     ComPtr<ID3D12Resource> back_buffer;
     if (swap_chain4->GetBuffer(i, IID_PPV_ARGS(&back_buffer)) != S_OK) {
       return false;
@@ -441,49 +417,28 @@ static Directx *CreateDirectx(Window *window) {
   }
 
   // Create command allocators
-  for (int i = 0; i < Directx::FRAMES_COUNT; ++i) {
-    ComPtr<ID3D12CommandAllocator> command_allocator_direct;
-    ComPtr<ID3D12CommandAllocator> command_allocator_copy;
+  for (int i = 0; i < FRAME_COUNT; ++i) {
+    ComPtr<ID3D12CommandAllocator> command_allocator;
 
-    if (device2->CreateCommandAllocator(
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            IID_PPV_ARGS(&command_allocator_direct)) != S_OK) {
+    if (device2->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                        IID_PPV_ARGS(&command_allocator)) !=
+        S_OK) {
       return nullptr;
     }
 
-    if (device2->CreateCommandAllocator(
-            D3D12_COMMAND_LIST_TYPE_COPY,
-            IID_PPV_ARGS(&command_allocator_copy)) != S_OK) {
-      return nullptr;
-    }
-
-    result->command_allocators_direct[i] = command_allocator_direct;
-    result->command_allocators_copy[i] = command_allocator_copy;
+    result->command_allocators[i] = command_allocator;
   }
 
-  // Create direct command list
-  ComPtr<ID3D12GraphicsCommandList> command_list_direct;
+  // Create command list
+  ComPtr<ID3D12GraphicsCommandList> command_list;
   if (device2->CreateCommandList(
           0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-          result->command_allocators_direct[current_back_buffer_index].Get(),
-          nullptr, IID_PPV_ARGS(&command_list_direct)) != S_OK) {
+          result->command_allocators[current_back_buffer_index].Get(), nullptr,
+          IID_PPV_ARGS(&command_list)) != S_OK) {
     return nullptr;
   }
 
-  if (command_list_direct->Close() != S_OK) {
-    return nullptr;
-  }
-
-  // Create copy command list
-  ComPtr<ID3D12GraphicsCommandList> command_list_copy;
-  if (device2->CreateCommandList(
-          0, D3D12_COMMAND_LIST_TYPE_COPY,
-          result->command_allocators_copy[current_back_buffer_index].Get(),
-          nullptr, IID_PPV_ARGS(&command_list_copy)) != S_OK) {
-    return nullptr;
-  }
-
-  if (command_list_copy->Close() != S_OK) {
+  if (command_list->Close() != S_OK) {
     return nullptr;
   }
 
@@ -545,24 +500,26 @@ static Directx *CreateDirectx(Window *window) {
       depth_buffer.Get(), &dsv_descriptor,
       dsv_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
 
-  // Shader resource view descriptor heap
-  D3D12_DESCRIPTOR_HEAP_DESC srv_heap_descriptor = {};
-  srv_heap_descriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-  srv_heap_descriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-  srv_heap_descriptor.NumDescriptors = DESCRIPTOR_HEAP_MAX_HANDLES;
+  // CBV, SRV, UAV descriptor heap
+  D3D12_DESCRIPTOR_HEAP_DESC cbv_srv_uav_descriptor = {};
+  cbv_srv_uav_descriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+  cbv_srv_uav_descriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+  cbv_srv_uav_descriptor.NumDescriptors = DESCRIPTOR_HEAP_MAX_HANDLES;
 
-  ComPtr<ID3D12DescriptorHeap> srv_descriptor_heap;
+  ComPtr<ID3D12DescriptorHeap> cbv_srv_uav_descriptor_heap;
   if (device2->CreateDescriptorHeap(
-          &srv_heap_descriptor, IID_PPV_ARGS(&srv_descriptor_heap)) != S_OK) {
+          &cbv_srv_uav_descriptor,
+          IID_PPV_ARGS(&cbv_srv_uav_descriptor_heap)) != S_OK) {
     return nullptr;
   }
 
+  UINT cbv_srv_uav_descriptor_size =
+      device2->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
   result->device2 = device2;
-  result->command_queue_direct = command_queue_direct;
-  result->command_queue_copy = command_queue_copy;
+  result->command_queue = command_queue;
   result->swap_chain4 = swap_chain4;
-  result->command_list_direct = command_list_direct;
-  result->command_list_copy = command_list_copy;
+  result->command_list = command_list;
   result->fence = fence;
   result->fence_event = fence_event;
   result->current_back_buffer_index = current_back_buffer_index;
@@ -571,11 +528,12 @@ static Directx *CreateDirectx(Window *window) {
   result->scissor_rect = scissor_rect;
   result->viewport = viewport;
   result->dsv_descriptor_heap = dsv_descriptor_heap;
-  result->srv_descriptor_heap = srv_descriptor_heap;
+  result->cbv_srv_uav_descriptor_heap = cbv_srv_uav_descriptor_heap;
   result->depth_buffer = depth_buffer;
+  result->cbv_srv_uav_descriptor_size = cbv_srv_uav_descriptor_size;
   result->vsync = 0;
   result->fence_value = 0;
-  ZeroMemory(result->fence_values, sizeof(uint64_t) * Directx::FRAMES_COUNT);
+  ZeroMemory(result->fence_values, sizeof(uint64_t) * FRAME_COUNT);
 
   return result;
 }
@@ -586,7 +544,7 @@ static void DirectxUpdateBufferResource(
     const void *buffer_data,
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE) {
   auto device2 = directx->device2;
-  auto command_list_copy = directx->command_list_copy;
+  auto command_list = directx->command_list;
 
   size_t buffer_size = elements_count * elements_size;
 
@@ -606,7 +564,28 @@ static void DirectxUpdateBufferResource(
     sd.RowPitch = buffer_size;
     sd.SlicePitch = sd.RowPitch;
 
-    UpdateSubresources(command_list_copy.Get(), *destination, *intermediate, 0,
-                       0, 1, &sd);
+    UpdateSubresources(command_list.Get(), *destination, *intermediate, 0, 0, 1,
+                       &sd);
   }
+}
+
+static bool DirectxWaitForGPU(Directx *directx) {
+  auto command_queue = directx->command_queue;
+  auto fence = directx->fence;
+  auto fence_event = directx->fence_event;
+  auto &fence_value = directx->fence_values[directx->current_back_buffer_index];
+
+  if (command_queue->Signal(fence.Get(), fence_value) != S_OK) {
+    return false;
+  }
+
+  if (fence->SetEventOnCompletion(fence_value, fence_event) != S_OK) {
+    return false;
+  }
+
+  WaitForSingleObjectEx(fence_event, INFINITE, FALSE);
+
+  fence_value++;
+
+  return true;
 }

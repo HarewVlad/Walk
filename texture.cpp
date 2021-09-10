@@ -14,23 +14,31 @@ inline bool CheckUAVSupport(D3D12_FEATURE_DATA_FORMAT_SUPPORT format_support) {
 static Texture* CreateTexture(const std::wstring& filename, Directx* directx) {
   // TODO: Create descriptor allocator
   auto device2 = directx->device2;
-  auto srv_descriptor_heap = directx->srv_descriptor_heap;
-  auto& current_back_buffer_index = directx->current_back_buffer_index;
+  auto current_back_buffer_index = directx->current_back_buffer_index;
+  auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
   D3D12_CPU_DESCRIPTOR_HANDLE srv_handle =
-      srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart();
-  auto command_list_direct = directx->command_list_direct;
-  auto command_allocator_direct =
-      directx->command_allocators_direct[current_back_buffer_index];
-  auto command_queue_direct = directx->command_queue_direct;
+      cbv_srv_uav_descriptor_heap->GetCPUDescriptorHandleForHeapStart(); // Now taking 1 descriptor for texture
+  auto command_list = directx->command_list;
+  auto command_allocator =
+      directx->command_allocators[current_back_buffer_index];
+  auto command_queue = directx->command_queue;
 
   Texture* texture = new Texture;
 
   TexMetadata texture_metadata;
   ScratchImage scratch_image;
 
-  if (LoadFromHDRFile(filename.c_str(), &texture_metadata, scratch_image) !=
-      S_OK) {
-    return nullptr;
+  std::wstring extension = filename.substr(filename.length() - 3);
+  if (extension == L"jpg") {
+    if (LoadFromWICFile(filename.c_str(), WIC_FLAGS_NONE, &texture_metadata,
+                        scratch_image)) {
+      return nullptr;
+    }
+  } else if (extension == L"hdr") {
+    if (LoadFromHDRFile(filename.c_str(), &texture_metadata, scratch_image) !=
+        S_OK) {
+      return nullptr;
+    }
   }
 
   D3D12_RESOURCE_DESC texture_descriptor = {};
@@ -80,25 +88,26 @@ static Texture* CreateTexture(const std::wstring& filename, Directx* directx) {
     return nullptr;
   }
 
-  command_allocator_direct->Reset();
-  command_list_direct->Reset(command_allocator_direct.Get(), nullptr);
+  command_allocator->Reset();
+  command_list->Reset(command_allocator.Get(), nullptr);
 
-  UpdateSubresources(command_list_direct.Get(), texture_resource.Get(),
+  UpdateSubresources(command_list.Get(), texture_resource.Get(),
                      texture_upload.Get(), 0, 0,
                      static_cast<uint32_t>(texture_subresources.size()),
                      texture_subresources.data());
 
   CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
       texture_resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
-      D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-  command_list_direct->ResourceBarrier(1, &barrier);
+      D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+  command_list->ResourceBarrier(1, &barrier);
 
   // Execute copy command list
-  command_list_direct->Close();
+  command_list->Close();
 
-  ID3D12CommandList* const command_lists[] = {command_list_direct.Get()};
-  command_queue_direct->ExecuteCommandLists(_countof(command_lists),
-                                            command_lists);
+  ID3D12CommandList* const command_lists[] = {command_list.Get()};
+  command_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
+
+  // DirectxWaitForGPU(directx);
 
   ComPtr<ID3D12Fence> fence;
   if (device2->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)) !=
@@ -112,13 +121,14 @@ static Texture* CreateTexture(const std::wstring& filename, Directx* directx) {
   }
 
   uint64_t fence_value = 0;
-  fence_value = Signal(command_queue_direct, fence, fence_value);
+  fence_value = Signal(command_queue, fence, fence_value);
 
   WaitForFenceValue(fence, fence_value, fence_event);
 
-  // Create RTV
+  // Create SRV
   D3D12_SHADER_RESOURCE_VIEW_DESC srv_descriptor = {};
-  srv_descriptor.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+  srv_descriptor.Shader4ComponentMapping =
+      D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
   srv_descriptor.Format = texture_descriptor.Format;
   srv_descriptor.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
   srv_descriptor.Texture2D.MipLevels = 1;
@@ -126,7 +136,6 @@ static Texture* CreateTexture(const std::wstring& filename, Directx* directx) {
                                     srv_handle);
 
   texture->texture_resource = texture_resource;
-  texture->srv_handle = srv_handle;
 
   return texture;
 }
