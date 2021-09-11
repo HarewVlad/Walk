@@ -53,54 +53,49 @@ inline bool CubeCreateVertexBuffer(Cube *cube, Directx *directx) {
   return true;
 }
 
-inline bool CubeCreateConstantBuffer(Cube *cube, Directx *directx, int count) {
+inline bool CubeCreateStructuredBuffer(Cube *cube, Directx *directx,
+                                       int count) {
   auto device2 = directx->device2;
   auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
   UINT cbv_srv_uav_descriptor_size = directx->cbv_srv_uav_descriptor_size;
-  CD3DX12_CPU_DESCRIPTOR_HANDLE cbv_descriptor_handle(
+  CD3DX12_CPU_DESCRIPTOR_HANDLE srv_descriptor_handle(
       cbv_srv_uav_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), 1,
       cbv_srv_uav_descriptor_size);  // 0 - For texture // TODO: Create
                                      // descriptor allocator
+  auto &instances = cube->instances;
 
-  ComPtr<ID3D12Resource> constant_buffer;
-  if (device2->CreateCommittedResource(
-          &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-          D3D12_HEAP_FLAG_NONE,
-          &CD3DX12_RESOURCE_DESC::Buffer(sizeof(CubeConstantBuffer)),
-          D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-          IID_PPV_ARGS(&constant_buffer))) {
-    return false;
-  }
-
-  D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_descriptor = {};
-  cbv_descriptor.BufferLocation = constant_buffer->GetGPUVirtualAddress();
-  cbv_descriptor.SizeInBytes = sizeof(CubeConstantBuffer);
-  device2->CreateConstantBufferView(&cbv_descriptor, cbv_descriptor_handle);
-
-  CubeConstantBuffer *constant_buffer_data = new CubeConstantBuffer{};
+  const UINT cube_instances_count = count * count * count;
+  const UINT cube_instances_size = cube_instances_count * sizeof(CubeInstance);
+  instances.resize(cube_instances_count);
   for (int i = 0; i < count; ++i) {
     for (int j = 0; j < count; ++j) {
       for (int k = 0; k < count; ++k) {
-        constant_buffer_data->offsets[(i * count + j) * count + k] = {
+        instances[(i * count + j) * count + k].offset = {
             i * 10.0f, j * 10.0f, k * 10.0f, 0};
       }
     }
   }
 
-  void *constant_buffer_address = nullptr;
-  CD3DX12_RANGE read_range(
-      0, 0);  // We do not intend to read from this resource on the CPU.
-  if (constant_buffer->Map(
-          0, &read_range,
-          reinterpret_cast<void **>(&constant_buffer_address))) {
-    return false;
-  }
-  memcpy(constant_buffer_address, constant_buffer_data,
-         sizeof(CubeConstantBuffer));
+  ComPtr<ID3D12Resource> instance_buffer;
+  ComPtr<ID3D12Resource> intermediate_instance_buffer;
+  DirectxUpdateBufferResource(
+      directx, &instance_buffer, &intermediate_instance_buffer,
+      cube_instances_count, sizeof(CubeInstance), &instances[0]);
 
-  cube->constant_buffer_data = constant_buffer_data;
-  cube->constant_buffer = constant_buffer;
-  cube->constant_buffer_address = constant_buffer_address;
+  D3D12_SHADER_RESOURCE_VIEW_DESC srv_descriptor = {};
+  srv_descriptor.Shader4ComponentMapping =
+      D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+  srv_descriptor.Format = DXGI_FORMAT_UNKNOWN;
+  srv_descriptor.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+  srv_descriptor.Buffer.FirstElement = 0;
+  srv_descriptor.Buffer.NumElements = cube_instances_count;
+  srv_descriptor.Buffer.StructureByteStride = sizeof(CubeInstance);
+  srv_descriptor.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+  device2->CreateShaderResourceView(instance_buffer.Get(), &srv_descriptor, srv_descriptor_handle);
+
+  cube->instance_buffer = instance_buffer;
+  cube->intermediate_instance_buffer = intermediate_instance_buffer;
 
   return true;
 }
@@ -137,7 +132,7 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
     return nullptr;
   }
 
-  if (!CubeCreateConstantBuffer(result, directx, count)) {
+  if (!CubeCreateStructuredBuffer(result, directx, count)) {
     return nullptr;
   }
 
@@ -149,16 +144,16 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
   }
 
   CD3DX12_DESCRIPTOR_RANGE1 descriptor_ranges[2];
-  descriptor_ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0,
-                            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-  descriptor_ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1, 0,
-                            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-  CD3DX12_ROOT_PARAMETER1 root_parameters[2];  // MVP matrix, CBV, SRV
+  descriptor_ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0,
+                            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); // Texture
+  descriptor_ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0,
+                            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); // Structured buffer
+  CD3DX12_ROOT_PARAMETER1 root_parameters[2];
   root_parameters[0].InitAsConstants(sizeof(XMMATRIX) * 0.25, 0, 0,
                                      D3D12_SHADER_VISIBILITY_VERTEX);
 
   root_parameters[1].InitAsDescriptorTable(_countof(descriptor_ranges),
-                                           descriptor_ranges,  // Textures
+                                           descriptor_ranges,
                                            D3D12_SHADER_VISIBILITY_ALL);
 
   CD3DX12_STATIC_SAMPLER_DESC linear_repeat_sampler(
@@ -199,6 +194,17 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
        D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
   };
 
+  // Depth stencil state
+  CD3DX12_DEPTH_STENCIL_DESC depth_stencil_state(D3D12_DEFAULT);
+  depth_stencil_state.DepthEnable = TRUE;
+
+  // Blend state
+  CD3DX12_BLEND_DESC blend_state(D3D12_DEFAULT);
+
+  // Rasterizer state
+  CD3DX12_RASTERIZER_DESC rasterizer_state(D3D12_DEFAULT);
+  rasterizer_state.MultisampleEnable = TRUE;
+
   D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_state_descriptor = {};
   pipeline_state_descriptor.InputLayout = {input_element_descriptor,
                                            _countof(input_element_descriptor)};
@@ -207,11 +213,11 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
       CD3DX12_SHADER_BYTECODE(vertex_shader_blob.Get());
   pipeline_state_descriptor.PS =
       CD3DX12_SHADER_BYTECODE(pixel_shader_blob.Get());
-  pipeline_state_descriptor.RasterizerState =
-      CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-  pipeline_state_descriptor.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-  pipeline_state_descriptor.DepthStencilState.DepthEnable = FALSE;
-  pipeline_state_descriptor.DepthStencilState.StencilEnable = FALSE;
+  pipeline_state_descriptor.RasterizerState = rasterizer_state;
+  pipeline_state_descriptor.BlendState = blend_state;
+  pipeline_state_descriptor.DepthStencilState = depth_stencil_state;
+  pipeline_state_descriptor.DSVFormat =
+      DXGI_FORMAT_D32_FLOAT;  // Error with debug layer if not specified
   pipeline_state_descriptor.SampleMask = UINT_MAX;
   pipeline_state_descriptor.PrimitiveTopologyType =
       D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -268,6 +274,7 @@ static bool CubeRender(Cube *cube, Directx *directx, const XMMATRIX &view,
   auto texture = cube->texture;
   auto texture_resouruce = texture->texture_resource;
   auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
+  const auto instances_count = cube->instances.size();
 
   command_list->SetPipelineState(pipeline_state.Get());
   command_list->SetGraphicsRootSignature(root_signature.Get());
@@ -291,19 +298,18 @@ static bool CubeRender(Cube *cube, Directx *directx, const XMMATRIX &view,
   command_list->IASetVertexBuffers(0, 1, &vertex_buffer_view);
   command_list->IASetIndexBuffer(&index_buffer_view);
 
-  command_list->DrawIndexedInstanced(indices_count, 1000, 0, 0, 0);
+  command_list->DrawIndexedInstanced(indices_count, instances_count, 0, 0, 0);
 
   return true;
 }
 
 static bool CubeUpdate(Cube *cube, float dt) {
   auto &model = cube->model;
-  auto constant_buffer_data = cube->constant_buffer_data;
 
   // Rotation
   static float angle = 0;
   angle += dt;
-  const XMVECTOR rotation_axis = XMVectorSet(0, 1, 1, 0);
+  const XMVECTOR rotation_axis = XMVectorSet(0, 0, 1, 0);
   model = XMMatrixRotationAxis(rotation_axis, XMConvertToRadians(angle));
 
   return true;

@@ -3,12 +3,11 @@ struct ModelViewProjection {
 };
 
 struct InstanceData {
-	float4 offset[1000];
-	float4 padding[2];
+	float4 offset;
 };
 
 ConstantBuffer<ModelViewProjection> MVP_CB : register(b0);
-ConstantBuffer<InstanceData> ID_CB : register(b1);
+StructuredBuffer<InstanceData> ID_SB : register(t0);
 
 struct VertexInput {
 	float3 position : position;
@@ -24,8 +23,7 @@ struct VertexOutput {
 VertexOutput main(VertexInput input) {
 	VertexOutput output;
 
-	float3 new_position = {input.position.x + ID_CB.offset[input.iid].x, input.position.y + ID_CB.offset[input.iid].y, input.position.z + ID_CB.offset[input.iid].z};
-	output.position = mul(MVP_CB.MVP, float4(new_position, 1.0f));
+	output.position = mul(MVP_CB.MVP, float4(input.position + ID_SB[input.iid].offset.xyz, 1.0f));
 	output.uv = input.uv;
 
 	return output;

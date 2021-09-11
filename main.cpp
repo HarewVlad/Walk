@@ -1,14 +1,15 @@
 #include "main.h"
 #include "time.cpp"
 #include "window.cpp"
-// #include "descriptor_heap.cpp"
 #include "directx.cpp"
 #include "texture.cpp"
+#include "camera.cpp"
 
 // Tests
 #include "tests\cube.cpp"
-
 #include "entry.cpp"
+
+// TODO: Descriptor allocator
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int) {
   Window *window = CreateWindow(instance, 1920, 1080);
@@ -21,9 +22,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int) {
     return 1;
   }
 
-  Texture *texture = CreateTexture(L"test_image_hdr.hdr", directx);
-
-  Cube *cube = CreateCube(directx, texture);
+  Texture *texture = CreateTexture(L"test_image_jpg.jpg", directx);
+  Cube *cube = CreateCube(directx, texture, 15);
   if (!cube) {
     return 1;
   }
@@ -35,11 +35,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int) {
   //   // Sky *sky;
   // };
 
-  // Descriptor *srv_descriptor = CreateDescriptor(directx->device2, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-  // D3D12_CPU_DESCRIPTOR_HANDLE srv_handle = DescriptorGetCPUHandle(srv_descriptor);
-
-  // Texture *texture = CreateTexture(L"test_image_hdr.hdr", directx->device2, srv_handle);
-
-  Entry *entry = CreateEntry(window, directx, cube);
+  Camera *camera = CreateCamera({0, 0, 50});
+  Entry *entry = CreateEntry(window, directx, camera, cube);
   EntryMainLoop(entry);
 }

@@ -464,12 +464,12 @@ static Directx *CreateDirectx(Window *window) {
 
   // Depth stencil view descriptor heap
   ComPtr<ID3D12DescriptorHeap> dsv_descriptor_heap;
-  D3D12_DESCRIPTOR_HEAP_DESC dsv_hd = {};
-  dsv_hd.NumDescriptors = 1;
-  dsv_hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-  dsv_hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+  D3D12_DESCRIPTOR_HEAP_DESC dsv_heap_descriptor = {};
+  dsv_heap_descriptor.NumDescriptors = 1;
+  dsv_heap_descriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+  dsv_heap_descriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
   if (device2->CreateDescriptorHeap(
-          &dsv_hd, IID_PPV_ARGS(&dsv_descriptor_heap)) != S_OK) {
+          &dsv_heap_descriptor, IID_PPV_ARGS(&dsv_descriptor_heap)) != S_OK) {
     return nullptr;
   }
 
