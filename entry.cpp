@@ -18,6 +18,7 @@ static Entry *CreateEntry(Window *window, Directx *directx, Camera *camera, Cube
 inline void EntryRender(Entry *entry, float dt) {
   auto directx = entry->directx;
   auto cube = entry->cube;
+  auto window = entry->window;
   auto pipeline_state = cube->pipeline_state;
   auto camera = entry->camera;
   auto view = camera->view;

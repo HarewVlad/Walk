@@ -23,19 +23,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int) {
   }
 
   Texture *texture = CreateTexture(L"test_image_jpg.jpg", directx);
-  Cube *cube = CreateCube(directx, texture, 15);
+  Cube *cube = CreateCube(directx, texture, {0, 0, 0}, 100);
   if (!cube) {
     return 1;
   }
 
-  // TODO: Instead of "cube" pass:
-  // struct Tests {
-  //   Cube *cube;
-  //   // Sphere *sphere;
-  //   // Sky *sky;
-  // };
-
   Camera *camera = CreateCamera({0, 0, 50});
+  if (!camera) {
+    return 1;
+  }
+
   Entry *entry = CreateEntry(window, directx, camera, cube);
+  if (!entry) {
+    return 1;
+  }
+  
   EntryMainLoop(entry);
 }

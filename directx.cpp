@@ -155,7 +155,8 @@ static bool DirectxRenderBegin(
 
   command_list->ResourceBarrier(1, &barrier);
 
-  FLOAT clear_color[] = {0.4f, 0.6f, 0.9f, 1.0f};
+  // FLOAT clear_color[] = {0.4f, 0.6f, 0.9f, 1.0f};
+  FLOAT clear_color[] = {0, 0, 0, 1.0f};
   command_list->ClearRenderTargetView(rtv_descriptor_handle, clear_color, 0,
                                       nullptr);
   command_list->ClearDepthStencilView(
