@@ -1,7 +1,11 @@
 inline bool CubeCreateIndexBuffer(Cube *cube, Directx *directx) {
-  const WORD cube_indices[36] = {0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6,
-                                 4, 5, 1, 4, 1, 0, 3, 2, 6, 3, 6, 7,
-                                 1, 5, 6, 1, 6, 2, 4, 0, 3, 4, 3, 7};
+  // const WORD cube_indices[36] = {0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6,
+  //                                4, 5, 1, 4, 1, 0, 3, 2, 6, 3, 6, 7,
+  //                                1, 5, 6, 1, 6, 2, 4, 0, 3, 4, 3, 7};
+
+  const WORD cube_indices[] = {0,  1,  2,  0,  2,  3,  4,  5,  6,  4,  6,  7,
+                               8,  9,  10, 8,  10, 11, 12, 13, 14, 12, 14, 15,
+                               16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23};
   uint64_t indices_count = _countof(cube_indices);
 
   ComPtr<ID3D12Resource> index_buffer;
@@ -24,15 +28,70 @@ inline bool CubeCreateIndexBuffer(Cube *cube, Directx *directx) {
 }
 
 inline bool CubeCreateVertexBuffer(Cube *cube, Directx *directx) {
+  // const CubeVertex cube_vertices[] = {
+  //     {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0, 1)},  // 0
+  //     {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0, 0)},   // 1
+  //     {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1, 0)},    // 2
+  //     {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1, 1)},   // 3
+  //     {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0, 1)},   // 4
+  //     {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0, 0)},    // 5
+  //     {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1, 0)},     // 6
+  //     {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1, 1)}     // 7
+  // };
   const CubeVertex cube_vertices[] = {
-      {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0, 1)},  // 0
-      {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0, 0)},   // 1
-      {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1, 0)},    // 2
-      {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1, 1)},   // 3
-      {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0, 1)},   // 4
-      {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0, 0)},    // 5
-      {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1, 0)},     // 6
-      {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1, 1)}     // 7
+      {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f),
+       XMFLOAT2(0.0f, 1.0f)},
+      {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f),
+       XMFLOAT2(0.0f, 0.0f)},
+      {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f),
+       XMFLOAT2(1.0f, 0.0f)},
+      {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f),
+       XMFLOAT2(1.0f, 1.0f)},
+
+      {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f),
+       XMFLOAT2(1.0f, 1.0f)},
+      {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f),
+       XMFLOAT2(0.0f, 1.0f)},
+      {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f),
+       XMFLOAT2(0.0f, 0.0f)},
+      {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f),
+       XMFLOAT2(1.0f, 0.0f)},
+
+      {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),
+       XMFLOAT2(0.0f, 1.0f)},
+      {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),
+       XMFLOAT2(0.0f, 0.0f)},
+      {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),
+       XMFLOAT2(1.0f, 0.0f)},
+      {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),
+       XMFLOAT2(1.0f, 1.0f)},
+
+      {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
+       XMFLOAT2(1.0f, 1.0f)},
+      {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
+       XMFLOAT2(0.0f, 1.0f)},
+      {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
+       XMFLOAT2(0.0f, 0.0f)},
+      {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
+       XMFLOAT2(1.0f, 0.0f)},
+
+      {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),
+       XMFLOAT2(0.0f, 1.0f)},
+      {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),
+       XMFLOAT2(0.0f, 0.0f)},
+      {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),
+       XMFLOAT2(1.0f, 0.0f)},
+      {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),
+       XMFLOAT2(1.0f, 1.0f)},
+
+      {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f),
+       XMFLOAT2(0.0f, 1.0f)},
+      {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f),
+       XMFLOAT2(0.0f, 0.0f)},
+      {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f),
+       XMFLOAT2(1.0f, 0.0f)},
+      {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f),
+       XMFLOAT2(1.0f, 1.0f)},
   };
 
   ComPtr<ID3D12Resource> vertex_buffer;
@@ -54,7 +113,7 @@ inline bool CubeCreateVertexBuffer(Cube *cube, Directx *directx) {
 }
 
 inline bool CubeCreateStructuredBuffer(Cube *cube, Directx *directx,
-                                       int count) {
+                                       const XMFLOAT3 &position, int count) {
   auto device2 = directx->device2;
   auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
   UINT cbv_srv_uav_descriptor_size = directx->cbv_srv_uav_descriptor_size;
@@ -70,8 +129,16 @@ inline bool CubeCreateStructuredBuffer(Cube *cube, Directx *directx,
   for (int i = 0; i < count; ++i) {
     for (int j = 0; j < count; ++j) {
       for (int k = 0; k < count; ++k) {
-        instances[(i * count + j) * count + k].offset = {
-            i * 10.0f, j * 10.0f, k * 10.0f, 0};
+        int index = (i * count + j) * count + k;
+        instances[index].offset = {
+            i * 10.0f + (1 + rand() % count) - count * 5.0f,
+            j * 10.0f + (1 + rand() % count) - count * 5.0f,
+            k * 10.0f + (1 + rand() % count) - count * 5.0f, 0};
+        float r = rand() % 256;
+        float g = rand() % 256;
+        float b = rand() % 256;
+        instances[index].color = {r * 0.00390625f, g * 0.00390625f,
+                                  b * 0.00390625f};
       }
     }
   }
@@ -92,7 +159,8 @@ inline bool CubeCreateStructuredBuffer(Cube *cube, Directx *directx,
   srv_descriptor.Buffer.StructureByteStride = sizeof(CubeInstance);
   srv_descriptor.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
-  device2->CreateShaderResourceView(instance_buffer.Get(), &srv_descriptor, srv_descriptor_handle);
+  device2->CreateShaderResourceView(instance_buffer.Get(), &srv_descriptor,
+                                    srv_descriptor_handle);
 
   cube->instance_buffer = instance_buffer;
   cube->intermediate_instance_buffer = intermediate_instance_buffer;
@@ -100,42 +168,7 @@ inline bool CubeCreateStructuredBuffer(Cube *cube, Directx *directx,
   return true;
 }
 
-static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
-  Cube *result = new Cube;
-
-  auto device2 = directx->device2;
-  auto current_back_buffer_index = directx->current_back_buffer_index;
-  auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
-  auto command_queue = directx->command_queue;
-  auto command_list = directx->command_list;
-  auto command_allocator =
-      directx->command_allocators[current_back_buffer_index];
-
-  command_allocator->Reset();
-  command_list->Reset(command_allocator.Get(), nullptr);
-
-  if (!CubeCreateVertexBuffer(result, directx)) {
-    return nullptr;
-  }
-
-  if (!CubeCreateIndexBuffer(result, directx)) {
-    return nullptr;
-  }
-
-  ComPtr<ID3DBlob> vertex_shader_blob;
-  if (D3DReadFileToBlob(L"shaders\\vs.cso", &vertex_shader_blob) != S_OK) {
-    return nullptr;
-  }
-
-  ComPtr<ID3DBlob> pixel_shader_blob;
-  if (D3DReadFileToBlob(L"shaders\\ps.cso", &pixel_shader_blob) != S_OK) {
-    return nullptr;
-  }
-
-  if (!CubeCreateStructuredBuffer(result, directx, count)) {
-    return nullptr;
-  }
-
+inline bool CubeCreateRootSignature(Cube *cube, ComPtr<ID3D12Device2> device2) {
   D3D12_FEATURE_DATA_ROOT_SIGNATURE feature_data = {};
   feature_data.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
   if (FAILED(device2->CheckFeatureSupport(
@@ -144,15 +177,19 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
   }
 
   CD3DX12_DESCRIPTOR_RANGE1 descriptor_ranges[2];
-  descriptor_ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0,
-                            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); // Texture
-  descriptor_ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0,
-                            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC); // Structured buffer
-  CD3DX12_ROOT_PARAMETER1 root_parameters[2];
-  root_parameters[0].InitAsConstants(sizeof(XMMATRIX) * 0.25, 0, 0,
+  descriptor_ranges[0].Init(
+      D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0,
+      D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);  // Texture
+  descriptor_ranges[1].Init(
+      D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0,
+      D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);  // Structured buffer
+  CD3DX12_ROOT_PARAMETER1 root_parameters[3];
+  root_parameters[0].InitAsConstants(sizeof(CubeConstantBuffer) * 0.25, 0, 0,
                                      D3D12_SHADER_VISIBILITY_VERTEX);
+  root_parameters[1].InitAsConstants(sizeof(CubeLight) * 0.25, 1, 0,
+                                     D3D12_SHADER_VISIBILITY_PIXEL);
 
-  root_parameters[1].InitAsDescriptorTable(_countof(descriptor_ranges),
+  root_parameters[2].InitAsDescriptorTable(_countof(descriptor_ranges),
                                            descriptor_ranges,
                                            D3D12_SHADER_VISIBILITY_ALL);
 
@@ -172,13 +209,34 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
   if (D3DX12SerializeVersionedRootSignature(
           &root_signature_descriptor, feature_data.HighestVersion,
           &root_signature_blob, &error_blob)) {
-    return nullptr;
+    return false;
   }
 
   ComPtr<ID3D12RootSignature> root_signature;
   if (device2->CreateRootSignature(0, root_signature_blob->GetBufferPointer(),
                                    root_signature_blob->GetBufferSize(),
                                    IID_PPV_ARGS(&root_signature)) != S_OK) {
+    return false;
+  }
+
+  cube->root_signature = root_signature;
+
+  return true;
+}
+
+inline bool CubeCreatePSO(Cube *cube, ComPtr<ID3D12Device2> device2) {
+  auto root_signature = cube->root_signature;
+
+  ComPtr<ID3DBlob> vertex_shader_blob;
+  if (D3DCompileFromFile(L"shaders\\vs.hlsl", nullptr, nullptr, "main",
+                         "vs_5_1", 0, 0, &vertex_shader_blob,
+                         nullptr) != S_OK) {
+    return nullptr;
+  }
+
+  ComPtr<ID3DBlob> pixel_shader_blob;
+  if (D3DCompileFromFile(L"shaders\\ps.hlsl", nullptr, nullptr, "main",
+                         "ps_5_1", 0, 0, &pixel_shader_blob, nullptr) != S_OK) {
     return nullptr;
   }
 
@@ -188,6 +246,9 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
 
   D3D12_INPUT_ELEMENT_DESC input_element_descriptor[] = {
       {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+       D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+       0},
+      {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
        D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
        0},
       {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
@@ -228,10 +289,49 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
   ComPtr<ID3D12PipelineState> pipeline_state;
   if (device2->CreateGraphicsPipelineState(
           &pipeline_state_descriptor, IID_PPV_ARGS(&pipeline_state)) != S_OK) {
+    return false;
+  }
+
+  cube->pipeline_state = pipeline_state;
+
+  return true;
+}
+
+static Cube *CreateCube(Directx *directx, Texture *texture,
+                        const XMFLOAT3 &position, int count) {
+  Cube *result = new Cube;
+
+  auto device2 = directx->device2;
+  auto current_back_buffer_index = directx->current_back_buffer_index;
+  auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
+  auto command_queue = directx->command_queue;
+  auto command_list = directx->command_list;
+  auto command_allocator =
+      directx->command_allocators[current_back_buffer_index];
+
+  command_allocator->Reset();
+  command_list->Reset(command_allocator.Get(), nullptr);
+
+  if (!CubeCreateVertexBuffer(result, directx)) {
     return nullptr;
   }
 
-  // Execute copy command list
+  if (!CubeCreateIndexBuffer(result, directx)) {
+    return nullptr;
+  }
+
+  if (!CubeCreateStructuredBuffer(result, directx, position, count)) {
+    return nullptr;
+  }
+
+  if (!CubeCreateRootSignature(result, device2)) {
+    return nullptr;
+  }
+
+  if (!CubeCreatePSO(result, device2)) {
+    return nullptr;
+  }
+
   command_list->Close();
 
   ID3D12CommandList *const command_lists[] = {command_list.Get()};
@@ -255,13 +355,11 @@ static Cube *CreateCube(Directx *directx, Texture *texture, int count) {
 
   WaitForFenceValue(fence, fence_value, fence_event);
 
-  result->root_signature = root_signature;
-  result->pipeline_state = pipeline_state;
   result->texture = texture;
   return result;
 }
 
-static bool CubeRender(Cube *cube, Directx *directx, const XMMATRIX &view,
+static bool CubeRender(Cube *cube, Directx *directx, const XMFLOAT3& light_direction, const XMMATRIX &view,
                        const XMMATRIX &projection) {
   auto current_back_buffer_index = directx->current_back_buffer_index;
   auto command_list = directx->command_list;
@@ -274,7 +372,7 @@ static bool CubeRender(Cube *cube, Directx *directx, const XMMATRIX &view,
   auto texture = cube->texture;
   auto texture_resouruce = texture->texture_resource;
   auto cbv_srv_uav_descriptor_heap = directx->cbv_srv_uav_descriptor_heap;
-  const auto instances_count = cube->instances.size();
+  const UINT instances_count = cube->instances.size();
 
   command_list->SetPipelineState(pipeline_state.Get());
   command_list->SetGraphicsRootSignature(root_signature.Get());
@@ -286,13 +384,20 @@ static bool CubeRender(Cube *cube, Directx *directx, const XMMATRIX &view,
 
   XMMATRIX mvp_matrix = XMMatrixMultiply(model, view);
   mvp_matrix = XMMatrixMultiply(mvp_matrix, projection);
+  CubeConstantBuffer cube_constant_buffer = {mvp_matrix, model};
+
+  XMFLOAT4 ambient = {0.4f, 0.4f, 0.4f, 1.0f};
+  XMFLOAT4 diffuse = {1.0f, 1.0f, 1.0f, 1.0f};
+  CubeLight cube_light = {ambient, diffuse, light_direction};
 
   // Faster access since no indirection
-  command_list->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) * 0.25f,
-                                              &mvp_matrix, 0);
+  command_list->SetGraphicsRoot32BitConstants(0, sizeof(CubeConstantBuffer) * 0.25f,
+                                              &cube_constant_buffer, 0);
+  command_list->SetGraphicsRoot32BitConstants(1, sizeof(CubeLight) * 0.25f,
+                                              &cube_light, 0);
   // Descriptor tables have 2 indirections before access data
   command_list->SetGraphicsRootDescriptorTable(
-      1, cbv_srv_uav_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
+      2, cbv_srv_uav_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
   command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
   command_list->IASetVertexBuffers(0, 1, &vertex_buffer_view);
@@ -307,10 +412,11 @@ static bool CubeUpdate(Cube *cube, float dt) {
   auto &model = cube->model;
 
   // Rotation
-  static float angle = 0;
-  angle += dt;
-  const XMVECTOR rotation_axis = XMVectorSet(0, 0, 1, 0);
-  model = XMMatrixRotationAxis(rotation_axis, XMConvertToRadians(angle));
+  // static float angle = 0;
+  // angle += dt;
+  // const XMVECTOR rotation_axis = XMVectorSet(0, 0, 1, 0);
+  // model = XMMatrixRotationAxis(rotation_axis, XMConvertToRadians(angle));
+  model = XMMatrixIdentity();
 
   return true;
 }

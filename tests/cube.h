@@ -1,10 +1,23 @@
 struct CubeVertex {
   XMFLOAT3 position;
+  XMFLOAT3 normal;
   XMFLOAT2 uv;
 };
 
 struct CubeInstance {
   XMFLOAT4 offset;
+  XMFLOAT3 color;
+};
+
+struct CubeConstantBuffer {
+  XMMATRIX mvp;
+  XMMATRIX model;
+};
+
+struct CubeLight {
+  XMFLOAT4 ambient;
+  XMFLOAT4 diffuse;
+  XMFLOAT3 direction;
 };
 
 struct Cube {

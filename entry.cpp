@@ -23,9 +23,10 @@ inline void EntryRender(Entry *entry, float dt) {
   auto camera = entry->camera;
   auto view = camera->view;
   auto projection = entry->projection;
+  auto look_direction = camera->look_direction;
 
   DirectxRenderBegin(directx, pipeline_state);
-  CubeRender(cube, directx, view, projection);
+  CubeRender(cube, directx, look_direction, view, projection);
   DirectxRenderEnd(directx);
 }
 
